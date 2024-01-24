@@ -1,0 +1,14 @@
+DeviceProcessEvents
+| extend EasternTime = datetime_utc_to_local(TimeGenerated, "US/Eastern")
+| where InitiatingProcessFileName  in ("WINWORD.EXE","EXCEL.EXE","OUTLOOK.EXE","Revu.exe")
+    or InitiatingProcessFileName contains "powerpoint"
+    or InitiatingProcessFileName contains "adobe"
+    or InitiatingProcessFileName contains "foxit"
+| where FileName in ("cmd.exe","powershell.exe")
+| where ProcessCommandLine != '/c powershell.exe "get-wmiobject win32_computersystem | fl model"'
+| where ProcessCommandLine !contains "C:\\Program Files (x86)\\Foxit Software\\Foxit PDF Reader\\FoxitDriveDS.exe"
+| where ProcessCommandLine != '"CMD.exe" /C dotnet --list-runtimes'
+| where ProcessCommandLine !endswith 'AdobeGenuineSlimInstaller.exe"'
+| where ProcessCommandLine !contains '"cmd.exe"  /C reg export "HKCU\\Software\\Foxit Software\\Foxit PDF Reader'
+| where ProcessCommandLine !contains "/C reg import"
+| project EasternTime,DeviceName,InitiatingProcessAccountName,InitiatingProcessFileName,ProcessCommandLine
