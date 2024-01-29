@@ -1,0 +1,8 @@
+DeviceProcessEvents
+| extend EasternTime = datetime_utc_to_local(TimeGenerated, "US/Eastern")
+| where FileName == "bitsadmin.exe"
+| where ProcessCommandLine contains "download"
+    or ProcessCommandLine contains "transfer"
+    or ProcessCommandLine contains "addfile"
+    or ProcessCommandLine contains "http"
+| project EasternTime,DeviceName,InitiatingProcessCommandLine,ProcessCommandLine
