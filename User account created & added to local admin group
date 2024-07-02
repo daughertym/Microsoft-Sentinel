@@ -1,0 +1,22 @@
+DeviceEvents
+| where ActionType == "UserAccountCreated"
+| extend AccountCreationTime = datetime_utc_to_local(TimeGenerated, "US/Eastern")
+| extend AccountCreationActor = InitiatingProcessAccountName
+| join kind=inner (
+    DeviceEvents
+    | where ActionType == "UserAccountAddedToLocalGroup"
+        and AdditionalFields.GroupDomainName == "Builtin"
+        and AdditionalFields.GroupName == "Administrators"
+    | extend AccountAdditionTime = datetime_utc_to_local(TimeGenerated, "US/Eastern")
+    | extend AccountAdditionActor = InitiatingProcessAccountName
+) on AccountSid
+//Exclusions:
+| where AccountName !startswith "lenovo_tmp_"
+| where AccountDomain != "xxx"
+| project DeviceName,
+          AccountCreationActor,
+          AccountName,
+          AccountDomain,
+          AccountCreationTime,
+          AccountAdditionActor,
+          AccountAdditionTime
