@@ -1,0 +1,31 @@
+// Define the interval
+let Interval = 10m;
+// Identify known services installed by non-system users from past 30 days excluding the current interval
+let KnownServices =
+DeviceEvents
+| where TimeGenerated >= ago(30d) and TimeGenerated < ago(Interval)
+| where ActionType == "ServiceInstalled"
+| where InitiatingProcessAccountSid != "S-1-5-18"
+| extend ServiceName = tostring(AdditionalFields.ServiceName)
+| summarize by ServiceName,FileName,FolderPath,InitiatingProcessAccountName,ProcessCommandLine;
+// Filter for new service installations that are not in the known services for current interval
+DeviceEvents
+| where TimeGenerated > ago(Interval)
+| where ActionType == "ServiceInstalled"
+| where InitiatingProcessAccountSid != "S-1-5-18"
+| extend ServiceName = tostring(AdditionalFields.ServiceName)
+| join kind=leftanti (
+    KnownServices
+) on ServiceName,FileName,FolderPath,InitiatingProcessAccountName,ProcessCommandLine
+| extend EasternTime = datetime_utc_to_local(TimeGenerated, "US/Eastern")
+| extend Actor = InitiatingProcessAccountName
+| project EasternTime,
+          DeviceName,
+          Actor,
+          ServiceName,
+          FileName,
+          FolderPath,
+          ProcessCommandLine,
+          InitiatingProcessFileName,
+          InitiatingProcessFolderPath,
+          InitiatingProcessCommandLine
