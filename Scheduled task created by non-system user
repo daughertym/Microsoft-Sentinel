@@ -1,0 +1,41 @@
+// Define the interval
+let Interval = 10m;
+// Identify known scheduled task creation by non-system users from past 30 days excluding the current interval
+let KnownTasks =
+DeviceEvents
+| where TimeGenerated >= ago(30d) and TimeGenerated < ago(Interval)
+| where ActionType == "ScheduledTaskCreated"
+| where InitiatingProcessAccountSid != "S-1-5-18"
+| extend TaskName = tostring(AdditionalFields.TaskName)
+| extend TaskContent = parse_json(tostring(AdditionalFields.TaskContent))
+| extend Actions = TaskContent.Actions
+| extend Exec = Actions.Exec
+| extend Arguments = tostring(Exec.Arguments)
+| extend Command = tostring(Exec.Command)
+| summarize by TaskName,Command,Arguments;
+// Filter for new scheduled tasks that are not in the known scheduled tasks for current interval
+DeviceEvents
+| where TimeGenerated > ago(Interval)
+| where ActionType == "ScheduledTaskCreated"
+| where InitiatingProcessAccountSid != "S-1-5-18"
+| extend TaskName = tostring(AdditionalFields.TaskName)
+| extend TaskContent = parse_json(tostring(AdditionalFields.TaskContent))
+| extend Actions = TaskContent.Actions
+| extend Exec = Actions.Exec
+| extend Arguments = tostring(Exec.Arguments)
+| extend Command = tostring(Exec.Command)
+| join kind=leftanti (
+    KnownTasks
+) on TaskName,Command,Arguments
+// Exclusions:
+// THIS IS A WHERE NOT, so it's NOT everything below - don't confuse the startswith and contains because they are all NOT
+// Also, notice the OR after each
+// These are granular because a threat actor can name a task to something that looks benign, so the filtering is done on TaskName, Command, and Arguments separately
+| where not(
+    (TaskName startswith "\\ChromiumLaunchTask" 
+        and Command contains "chromium\\chromium.exe"
+        and Arguments contains "--tab-trigger=") or
+    (TaskName startswith "\\CorelUpdateHelperTask"
+        and Command contains "CUH.exe"
+        and Arguments == "-resume")
+)
