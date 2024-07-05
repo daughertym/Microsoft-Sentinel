@@ -1,5 +1,5 @@
 // Define the interval
-let Interval = 10m;
+let Interval = 15m;
 // Identify known scheduled task creation by non-system users from past 30 days excluding the current interval
 let KnownTasks =
 DeviceEvents
@@ -27,15 +27,15 @@ DeviceEvents
 | join kind=leftanti (
     KnownTasks
 ) on TaskName,Command,Arguments
+| extend EasternTime = datetime_utc_to_local(TimeGenerated, "US/Eastern")
+| extend Actor = InitiatingProcessAccountName
+| project EasternTime,DeviceName,Actor,TaskName,Command,Arguments
 // Exclusions:
-// THIS IS A WHERE NOT, so it's NOT everything below - don't confuse the startswith and contains because they are all NOT
+// THIS IS A WHERE NOT, so it's NOT everything below - don't confuse the startswith, contains, == because they are all NOT
 // Also, notice the OR after each
 // These are granular because a threat actor can name a task to something that looks benign, so the filtering is done on TaskName, Command, and Arguments separately
 | where not(
-    (TaskName startswith "\\ChromiumLaunchTask" 
-        and Command contains "chromium\\chromium.exe"
-        and Arguments contains "--tab-trigger=") or
-    (TaskName startswith "\\CorelUpdateHelperTask"
-        and Command contains "CUH.exe"
-        and Arguments == "-resume")
+    (TaskName startswith "\\OneDrive Reporting Task" 
+        and Command == "C:\\Program Files\\Microsoft OneDrive\\OneDriveStandaloneUpdater.exe"
+        and Arguments == "/reporting")
 )
