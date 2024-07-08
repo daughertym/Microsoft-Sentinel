@@ -1,5 +1,5 @@
 // Define the interval
-let Interval = 30m;
+let Interval = 1h;
 // Identify known internet facing devices for last 30 days excluding the current interval
 let KnownInternetFacingDevices =
 DeviceInfo
@@ -13,6 +13,5 @@ DeviceInfo
 | extend AdditionalFieldsDynamic = todynamic(AdditionalFields)
 | evaluate bag_unpack(AdditionalFieldsDynamic)
 | extend EasternTime = datetime_utc_to_local(TimeGenerated, "US/Eastern")
-| extend InternetFacingLastSeenEasternTime = datetime_utc_to_local(InternetFacingLastSeen, "US/Eastern")
 | where DeviceName !in(KnownInternetFacingDevices)
-| project EasternTime,DeviceName,OSPlatform,DeviceType,InternetFacingReason,InternetFacingLastSeenEasternTime
+| project EasternTime,DeviceName,OSPlatform,DeviceType,InternetFacingReason
