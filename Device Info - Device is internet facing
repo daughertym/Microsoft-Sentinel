@@ -9,9 +9,7 @@ DeviceInfo
 DeviceInfo
 | where TimeGenerated > ago(Interval)
 | where IsInternetFacing
-// Extract all AdditionalFields
-| extend AdditionalFieldsDynamic = todynamic(AdditionalFields)
-| evaluate bag_unpack(AdditionalFieldsDynamic)
 | extend EasternTime = datetime_utc_to_local(TimeGenerated, "US/Eastern")
+| extend InternetFacingReason = AdditionalFields.InternetFacingReason
 | where DeviceName !in(KnownInternetFacingDevices)
 | project EasternTime,DeviceName,OSPlatform,DeviceType,InternetFacingReason
