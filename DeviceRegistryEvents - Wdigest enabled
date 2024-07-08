@@ -1,0 +1,7 @@
+// When WDigest is enabled, user passwords are stored in plaintext in the Local Security Authority Subsystem Service (LSASS) process memory. 
+// This means that an attacker with access to the memory (e.g., through a process dump or with administrative privileges) can easily retrieve plaintext passwords.
+DeviceRegistryEvents
+| where RegistryKey contains "wdigest" and RegistryValueName == "UseLogonCredential" and RegistryValueData == "1"
+| extend EasternTime = datetime_utc_to_local(TimeGenerated, "US/Eastern")
+| extend Actor = InitiatingProcessAccountName
+| project EasternTime,DeviceName,Actor
