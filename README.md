@@ -1,1 +1,1 @@
-Microsoft Sentinel KQL for threat hunting or analytic rule.
+Microsoft Sentinel KQL for threat hunting/analytic rule.
