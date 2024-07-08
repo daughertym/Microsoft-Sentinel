@@ -2,14 +2,16 @@
 let Interval = 1h;
 // Identify known internet facing devices for last 30 days excluding the current interval
 let KnownInternetFacingDevices =
-DeviceInfo
-| where TimeGenerated >= ago(30d) and TimeGenerated < ago(Interval)
-| where IsInternetFacing
-| summarize by DeviceName;
+    DeviceInfo
+    | where TimeGenerated >= ago(30d) and TimeGenerated < ago(Interval)
+    | where IsInternetFacing
+    | summarize by DeviceName;
 DeviceInfo
 | where TimeGenerated > ago(Interval)
 | where IsInternetFacing
 | extend EasternTime = datetime_utc_to_local(TimeGenerated, "US/Eastern")
 | extend InternetFacingReason = AdditionalFields.InternetFacingReason
-| where DeviceName !in(KnownInternetFacingDevices)
-| project EasternTime,DeviceName,OSPlatform,DeviceType,InternetFacingReason
+| join kind=leftanti (
+    KnownInternetFacingDevices
+) on DeviceName
+| project EasternTime, DeviceName, OSPlatform, DeviceType, InternetFacingReason
