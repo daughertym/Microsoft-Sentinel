@@ -1,0 +1,6 @@
+DeviceNetworkEvents
+| where ActionType == "InboundInternetScanInspected"
+| extend EasternTime = datetime_utc_to_local(TimeGenerated, "US/Eastern")
+| extend PublicScannedIP = AdditionalFields.PublicScannedIp
+| extend PublicScannedPort = AdditionalFields.PublicScannedPort
+| project EasternTime,DeviceName,PublicScannedIP,PublicScannedPort
