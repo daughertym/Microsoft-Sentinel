@@ -1,18 +1,18 @@
 // Define the interval
-let Interval = 15m;
+let Interval = 30m;
 // Identify known scheduled task creation by non-system users from past 30 days excluding the current interval
 let KnownTasks =
-DeviceEvents
-| where TimeGenerated >= ago(30d) and TimeGenerated < ago(Interval)
-| where ActionType == "ScheduledTaskCreated"
-| where InitiatingProcessAccountSid != "S-1-5-18"
-| extend TaskName = tostring(AdditionalFields.TaskName)
-| extend TaskContent = parse_json(tostring(AdditionalFields.TaskContent))
-| extend Actions = TaskContent.Actions
-| extend Exec = Actions.Exec
-| extend Arguments = tostring(Exec.Arguments)
-| extend Command = tostring(Exec.Command)
-| summarize by TaskName,Command,Arguments;
+    DeviceEvents
+    | where TimeGenerated >= ago(47h) and TimeGenerated < ago(Interval)
+    | where ActionType == "ScheduledTaskCreated"
+    | where InitiatingProcessAccountSid != "S-1-5-18"
+    | extend TaskName = tostring(AdditionalFields.TaskName)
+    | extend TaskContent = parse_json(tostring(AdditionalFields.TaskContent))
+    | extend Actions = TaskContent.Actions
+    | extend Exec = Actions.Exec
+    | extend Arguments = tostring(Exec.Arguments)
+    | extend Command = tostring(Exec.Command)
+    | summarize by TaskName, Command, Arguments;
 // Filter for new scheduled tasks that are not in the known scheduled tasks for current interval
 DeviceEvents
 | where TimeGenerated > ago(Interval)
@@ -26,10 +26,11 @@ DeviceEvents
 | extend Command = tostring(Exec.Command)
 | join kind=leftanti (
     KnownTasks
-) on TaskName,Command,Arguments
+    )
+    on TaskName, Command, Arguments
 | extend EasternTime = datetime_utc_to_local(TimeGenerated, "US/Eastern")
 | extend Actor = InitiatingProcessAccountName
-| project EasternTime,DeviceName,Actor,TaskName,Command,Arguments
+| project EasternTime, DeviceName, Actor, TaskName, Command, Arguments
 // Exclusions:
 // THIS IS A WHERE NOT, so it's NOT everything below - don't confuse the startswith, contains, == because they are all NOT
 // Also, notice the OR after each
@@ -37,5 +38,29 @@ DeviceEvents
 | where not(
     (TaskName startswith "\\OneDrive Reporting Task" 
         and Command == "C:\\Program Files\\Microsoft OneDrive\\OneDriveStandaloneUpdater.exe"
+        and Arguments == "/reporting") or
+    (TaskName startswith "\\OneDrive Standalone Update Task"
+        and Command == "%localappdata%\\Microsoft\\OneDrive\\OneDriveStandaloneUpdater.exe"
+        and Arguments == "") or
+    (TaskName startswith "\\User_Feed_Synchronization"
+        and Command == "C:\\Windows\\system32\\msfeedssync.exe"
+        and Arguments == "sync") or
+    (TaskName startswith "\\PowerToys\\Autorun"
+        and Command == "C:\\Program Files\\PowerToys\\PowerToys.exe"
+        and Arguments == "") or
+    (TaskName startswith "\\OneLaunchUpdateTask"
+        and Command matches regex @"C:\\Users\\[^\\]+\\AppData\\Local\\OneLaunch\\[0-9]+(\.[0-9]+)+\\OneLaunchUpdaterProxy.exe"
+        and Arguments == "") or
+    (TaskName startswith "\\OneLaunchUpdateTask"
+        and Command matches regex @"C:\\Users\\[^\\]+\\AppData\\Local\\OneLaunch\\[0-9]+(\.[0-9]+)+\\chromium\\chromium.exe"
+        and Arguments == "--tab-trigger=SystemStart --start-maximized") or
+    (TaskName startswith "\\OneLaunchUpdateTask"
+        and Command matches regex @"C:\\Users\\[^\\]+\\AppData\\Local\\OneLaunch\\[0-9]+(\.[0-9]+)+\\onelaunch.exe"
+        and Arguments == "/startedFrom=taskScheduler") or
+    (TaskName startswith "\\ZoomUpdateTaskUser"
+        and Command matches regex @'"C:\\Users\\[a-zA-Z0-9_]+\\AppData\\Roaming\\Zoom\\bin\\Zoom.exe"'
+        and Arguments == "--action=UpdateSchedule") or
+    (TaskName startswith "\\OneDrive Reporting Task"
+        and Command == "%localappdata%\\Microsoft\\OneDrive\\OneDriveStandaloneUpdater.exe"
         and Arguments == "/reporting")
 )
