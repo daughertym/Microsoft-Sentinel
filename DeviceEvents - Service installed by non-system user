@@ -1,9 +1,9 @@
 // Define the interval
-let Interval = 10m;
-// Identify known services installed by non-system users from past 30 days excluding the current interval
+let Interval = 30m;
+// Identify known services installed by non-system users excluding the current interval
 let KnownServices =
 DeviceEvents
-| where TimeGenerated >= ago(30d) and TimeGenerated < ago(Interval)
+| where TimeGenerated >= ago(47h) and TimeGenerated < ago(Interval)
 | where ActionType == "ServiceInstalled"
 | where InitiatingProcessAccountSid != "S-1-5-18"
 | extend ServiceName = tostring(AdditionalFields.ServiceName)
