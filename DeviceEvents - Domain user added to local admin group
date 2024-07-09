@@ -1,17 +1,18 @@
 DeviceEvents
-// Lookback time
 | where TimeGenerated > ago(30m)
 | where ActionType == "UserAccountAddedToLocalGroup"
     and AdditionalFields.GroupDomainName == "Builtin"
     and AdditionalFields.GroupName == "Administrators"
 | where InitiatingProcessAccountSid != "S-1-5-18"
-| join kind=inner (
+| join kind=leftouter (
     IdentityInfo
-    | where TimeGenerated > ago(30d)
+    | where TimeGenerated >= ago(47h)
     | summarize arg_max(TimeGenerated, *) by AccountSID
     | project AccountSID, AccountName, AccountDomain
 ) on $left.AccountSid == $right.AccountSID
 | extend EasternTime = datetime_utc_to_local(TimeGenerated, "US/Eastern")
 | extend Actor = InitiatingProcessAccountName
-| extend AccountAdded = AccountName1
-| project EasternTime,DeviceName,Actor,AccountAdded
+// Uses coalesce to display AccountName1 if it exists in IdentityInfo
+// or display <SID not found in IdentityInfo table> if no match is found
+| extend AccountAdded = coalesce(AccountName1, "<SID not found in IdentityInfo table>")
+| project EasternTime,DeviceName,Actor,AccountAdded,AccountSid
