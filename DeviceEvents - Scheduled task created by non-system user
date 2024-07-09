@@ -1,6 +1,6 @@
 // Define the interval
 let Interval = 30m;
-// Identify known scheduled task creation by non-system users from past 30 days excluding the current interval
+// Identify known scheduled task creation by non-system users from past 47h days excluding the current interval
 let KnownTasks =
     DeviceEvents
     | where TimeGenerated >= ago(47h) and TimeGenerated < ago(Interval)
