@@ -2,12 +2,19 @@
 let Interval = 30m;
 // Identify known services installed by non-system users excluding the current interval
 let KnownServices =
-DeviceEvents
-| where TimeGenerated >= ago(47h) and TimeGenerated < ago(Interval)
-| where ActionType == "ServiceInstalled"
-| where InitiatingProcessAccountSid != "S-1-5-18"
-| extend ServiceName = tostring(AdditionalFields.ServiceName)
-| summarize by ServiceName,FileName,FolderPath,InitiatingProcessAccountName,ProcessCommandLine;
+    DeviceEvents
+    | where TimeGenerated >= ago(47h) and TimeGenerated < ago(Interval)
+    | where ActionType == "ServiceInstalled"
+    | where InitiatingProcessAccountSid != "S-1-5-18"
+    | extend ServiceName = tostring(AdditionalFields.ServiceName)
+    | summarize
+        by
+        ServiceName,
+        FileName,
+        FolderPath,
+        ProcessCommandLine,
+        InitiatingProcessFileName,
+        InitiatingProcessFolderPath;
 // Filter for new service installations that are not in the known services for current interval
 DeviceEvents
 | where TimeGenerated > ago(Interval)
@@ -16,16 +23,43 @@ DeviceEvents
 | extend ServiceName = tostring(AdditionalFields.ServiceName)
 | join kind=leftanti (
     KnownServices
-) on ServiceName,FileName,FolderPath,InitiatingProcessAccountName,ProcessCommandLine
+    )
+    on
+    ServiceName,
+    FileName,
+    FolderPath,
+    ProcessCommandLine,
+    InitiatingProcessFileName,
+    InitiatingProcessFolderPath
 | extend EasternTime = datetime_utc_to_local(TimeGenerated, "US/Eastern")
 | extend Actor = InitiatingProcessAccountName
-| project EasternTime,
-          DeviceName,
-          Actor,
-          ServiceName,
-          FileName,
-          FolderPath,
-          ProcessCommandLine,
-          InitiatingProcessFileName,
-          InitiatingProcessFolderPath,
-          InitiatingProcessCommandLine
+| project
+    EasternTime,
+    DeviceName,
+    Actor,
+    ServiceName,
+    FileName,
+    FolderPath,
+    ProcessCommandLine,
+    InitiatingProcessFileName,
+    InitiatingProcessFolderPath,
+    InitiatingProcessCommandLine
+// Exclusions
+// It's vital to exclude on multiple values as a threat actor can name a service to appear benign, etc
+// Below is where NOT, so don't confuse the ==
+// Each exclusion is separated by an or
+| where not(
+            (ServiceName == "Brother Wireless Setup Helper"
+    and FileName == "WirelessSetupChecker.exe"
+    and InitiatingProcessFileName == "wirelesssetupchecker.exe"
+    and InitiatingProcessCommandLine == "WirelessSetupChecker -install") or
+    (ServiceName startswith "LMIRescue_"
+    and FileName == "LMI_Rescue_srv.exe"
+    and InitiatingProcessFileName == "lmi_rescue_srv.exe"
+    and ProcessCommandLine contains "-service -sid") or
+    (ServiceName == "SUService"
+    and FileName == "SUService.exe"
+    and FolderPath == "C:\\Program Files (x86)\\Lenovo\\System Update"
+    and ProcessCommandLine == '"C:\\Program Files (x86)\\Lenovo\\System Update\\SUService.exe"'
+    and InitiatingProcessFileName == "installutil.exe") 
+        )
